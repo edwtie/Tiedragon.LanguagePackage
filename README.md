@@ -31,6 +31,14 @@ dotnet run --project src/Tiedragon.LanguagePackage -- compile source-folder outp
 dotnet run --project src/Tiedragon.LanguagePackage -- create-signing-key private-keys/beta.pem keys/beta.lngpdk.pubkey.json tiedragon-language-beta-2026
 ```
 
+## Compiler Recipe
+
+Package sources can include `compiler-recipe.json` to tell the compiler which
+generated content to create. Without a recipe, the compiler only packages the
+explicit files in the source package.
+
+See [`docs/COMPILER_RECIPE.md`](docs/COMPILER_RECIPE.md).
+
 ## Key Files
 
 Public trusted keys are stored as `.lngpdk.pubkey.json` files. These files may

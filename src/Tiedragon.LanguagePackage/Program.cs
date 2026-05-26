@@ -17,6 +17,7 @@ internal static class Program
     private const string MagicText = "SYSCALC-LNGPDK";
     private const string ObjectPackageExtension = ".objpdk";
     private const string CompiledPackageExtension = ".lngpdk";
+    private const string CompilerRecipeFileName = "compiler-recipe.json";
     private const int ContainerFormat = 1;
     private const string ProducerName = "Tiedragon";
     private const string PackageType = "language";
@@ -1002,6 +1003,7 @@ internal static class Program
 
     private static byte[] BuildZipPayload(string inputFolder, LanguagePackageManifest manifest)
     {
+        var recipe = LoadCompilerRecipe(inputFolder);
         var explicitEntries = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         using var memory = new MemoryStream();
         using (var archive = new ZipArchive(memory, ZipArchiveMode.Create, leaveOpen: true))
@@ -1022,7 +1024,7 @@ internal static class Program
                 explicitEntries.Add(NormalizeEntryName(relative));
             }
 
-            foreach (var entry in BuildGeneratedFormulaEntries(inputFolder, manifest))
+            foreach (var entry in BuildGeneratedEntries(inputFolder, manifest, recipe))
             {
                 if (explicitEntries.Contains(entry.Key))
                     continue;
@@ -1032,6 +1034,34 @@ internal static class Program
         }
 
         return memory.ToArray();
+    }
+
+    private static IReadOnlyDictionary<string, string> BuildGeneratedEntries(
+        string inputFolder,
+        LanguagePackageManifest manifest,
+        LanguagePackageCompilerRecipe recipe)
+    {
+        var entries = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (recipe.GenerateFormulaCards)
+        {
+            foreach (var entry in BuildGeneratedFormulaEntries(inputFolder, manifest))
+                entries[entry.Key] = entry.Value;
+        }
+
+        return entries;
+    }
+
+    private static LanguagePackageCompilerRecipe LoadCompilerRecipe(string inputFolder)
+    {
+        var path = Path.Combine(inputFolder, CompilerRecipeFileName);
+        if (!File.Exists(path))
+            return LanguagePackageCompilerRecipe.Default;
+
+        var recipe = JsonSerializer.Deserialize<LanguagePackageCompilerRecipe>(
+            File.ReadAllText(path, Encoding.UTF8),
+            JsonOptions) ?? throw new InvalidDataException(CompilerRecipeFileName + " is invalid.");
+        recipe.Validate();
+        return recipe;
     }
 
     private static IReadOnlyDictionary<string, string> BuildGeneratedFormulaEntries(string inputFolder, LanguagePackageManifest manifest)
@@ -1080,7 +1110,8 @@ internal static class Program
     private static bool IsCompileSourceOnlyEntry(string entryName)
     {
         var normalized = NormalizeEntryName(entryName);
-        return normalized.StartsWith("source/templates/", StringComparison.OrdinalIgnoreCase) ||
+        return normalized.Equals(CompilerRecipeFileName, StringComparison.OrdinalIgnoreCase) ||
+            normalized.StartsWith("source/templates/", StringComparison.OrdinalIgnoreCase) ||
             normalized.StartsWith("templates/", StringComparison.OrdinalIgnoreCase);
     }
 
@@ -1388,6 +1419,9 @@ internal static class Program
         foreach (var file in files)
         {
             var relative = Path.GetRelativePath(inputFolder, file).Replace('\\', '/');
+            if (IsCompileSourceOnlyEntry(relative))
+                continue;
+
             ValidateEntryName(relative);
             entries.Add(NormalizeEntryName(relative));
             var length = new FileInfo(file).Length;
@@ -1686,6 +1720,20 @@ public sealed record LanguagePackageBuildResult(
     string BasePackage,
     IReadOnlyList<string> AddedEntries,
     IReadOnlyList<string> AddedLanguageKeys);
+
+public sealed class LanguagePackageCompilerRecipe
+{
+    public static LanguagePackageCompilerRecipe Default { get; } = new();
+
+    public int Format { get; set; } = 1;
+    public bool GenerateFormulaCards { get; set; }
+
+    public void Validate()
+    {
+        if (Format != 1)
+            throw new InvalidDataException("Unsupported compiler recipe format.");
+    }
+}
 
 public sealed record LanguagePackageSigningOptions(
     string Algorithm,
