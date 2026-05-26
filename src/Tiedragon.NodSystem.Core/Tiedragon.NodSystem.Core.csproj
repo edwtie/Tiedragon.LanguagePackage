@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsAotCompatible>true</IsAotCompatible>
+    <AssemblyName>Tiedragon.NodSystem.Core</AssemblyName>
+    <Title>Tiedragon.NodSystem.Core</Title>
+    <Product>Tiedragon.NodSystem.Core</Product>
+    <Company>Tiedragon</Company>
+    <Platforms>AnyCPU;x64</Platforms>
+  </PropertyGroup>
+</Project>

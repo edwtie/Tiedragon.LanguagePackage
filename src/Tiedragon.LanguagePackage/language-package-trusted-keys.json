@@ -1,0 +1,20 @@
+{
+  "Keys": [
+    {
+      "KeyId": "tiedragon-language-dev-2026",
+      "Algorithm": "rsa-pss-sha256",
+      "SoftwareId": "tiedragon.syscalculator",
+      "PackageType": "language",
+      "PayloadFormat": "zip",
+      "PublicKeyPem": "-----BEGIN PUBLIC KEY-----\nMIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEAwWxL3ko/bfMnSNyHMh32\nX3N4E5piHsXN7rBIZkivyZUPWE8cyHct3L0cAk7oIbJAmcpo4DVZBNdeMTonco37\noh1MJjkYkhNlamIR/oBbPQ/1gYZQGHUsB45IJg8XIEWCj6cksTOCc9rZTjUcXLGu\nwPhuDF+lUvYk1utjNajEq4JEVPuglYwNrmPWT0hzHnPBt4Djy44QdseYms1PIa26\np+ks0xEi4o1yftJN6o9mMmtAVKtMZuTZDq8eNJPBP2HW803OKJc8C7Fcy/YAteLy\nhhDTwpw3fW057eAybZ/ke5Nu4WyxiQQN8VKFXDEXCN3Vt/9Kdz8fVypPLXOLKPss\nxcOMc8vW9VFnA6cVzy+FDbkp+AqjpnlIBDpps7et7Gn0xi5kf97AQpvWntHcvCuP\nk0SY9vunwYDqKslVMr5YIIJ22Fxa9gFaJdGP3P0jkB1H8W8LeZ2+WH98A74CRlfu\nXsK18qjsv6J/hQxfLAxSDgYmNEXPuTOdEvEEBqwlFeKdAgMBAAE=\n-----END PUBLIC KEY-----"
+    },
+    {
+      "KeyId": "tiedragon-language-beta-2026",
+      "Algorithm": "rsa-pss-sha256",
+      "SoftwareId": "tiedragon.syscalculator",
+      "PackageType": "language",
+      "PayloadFormat": "zip",
+      "PublicKeyPem": "-----BEGIN PUBLIC KEY-----\nMIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEAuol9jtpTiJg06ORP0aNP\nejpc7g9YvKz1FBTZrTEb2Q1vPFrpvgkcddeEOjyDALJ7JnIWo9Ar7f4nq/+SnvGv\nvoe6fgX3KKAISf8gHyxX12tOGGSH3tIOTxnWxt1ZR+FBtVBTwxhUvJhN/LiEHacl\n0Mb/9+I15IKZAruz6IGdN2tmZgg2867Fn3m4f7dNksBrLX314hxDUXOpfxZwRMmz\n5m4uBjejOoYAck8757Bp1+HtZkL9Ew5m19c4DCZjdRxvJlWQPiFCwNPMUnNBmG74\nrzukTl755ypM27N4ntmEr4O54vgRNNW+7IoZ39u4+Di3phmuEd5B2QUjYgkPaDXg\nYKW2oEbT+StxzuxQkmEnPw01h00O2nm5XD1SsocE5Pj87WGbwlwW6rChVP/3WjTu\nzryPqdqnIKWqfj+vTzcRIhYW+UGD4K3Hx4fZUGv+P3B46i5q5lP2ErqMwcTx9plj\nYXLMRHoVgpbw194ovNKBThi6vOpjxLDwcXTQb11skC05AgMBAAE=\n-----END PUBLIC KEY-----"
+    }
+  ]
+}
