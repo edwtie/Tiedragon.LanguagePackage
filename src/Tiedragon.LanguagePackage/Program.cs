@@ -1,12 +1,10 @@
 #nullable enable
 using SharpCompress.Archives;
 using System.IO.Compression;
-using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using Tiedragon.NodSystem.Core;
 
 namespace Tiedragon.LanguagePackage;
 
@@ -17,7 +15,6 @@ internal static class Program
     private const string MagicText = "SYSCALC-LNGPDK";
     private const string ObjectPackageExtension = ".objpdk";
     private const string CompiledPackageExtension = ".lngpdk";
-    private const string CompilerRecipeFileName = "compiler-recipe.json";
     private const int ContainerFormat = 1;
     private const string ProducerName = "Tiedragon";
     private const string PackageType = "language";
@@ -26,69 +23,6 @@ internal static class Program
     private const long MaxEntryBytes = 16L * 1024 * 1024;
     private const long MaxTotalEntryBytes = 128L * 1024 * 1024;
     private const long MaxPayloadBytes = 192L * 1024 * 1024;
-    private const string FormulaIndexPackageTemplate = """
-<h1>{{title}}</h1>
-<p>{{intro}}</p>
-<table>
-  <thead><tr><th>{{column_formula}}</th><th>{{column_category}}</th><th>{{column_tags}}</th><th>{{column_description}}</th></tr></thead>
-  <tbody>
-{{rows}}  </tbody>
-</table>
-""";
-
-    private const string FormulaCardPackageTemplate = """
-<h1>{{title}}</h1>
-<div class="notice">{{tags}}</div>
-<p>{{description}}</p>
-
-<h2>{{section_formula}}</h2>
-<p><code>{{formula_text}}</code></p>
-<div class="formula">{{mathml_card}}</div>
-
-<h2>{{section_text}}</h2>
-<pre>{{plain_text}}</pre>
-
-<h2>{{section_latex}}</h2>
-<pre>{{latex}}</pre>
-
-<h2>{{section_mathml}}</h2>
-<pre>{{mathml_pre}}</pre>
-
-<h2>{{section_example_nod}}</h2>
-<pre>{{example_nod}}</pre>
-""";
-
-    private const string NodFullPagePackageTemplate = """
-<h1>{{title}}</h1>
-<p>{{intro}}</p>
-
-<h2>{{section_title}}</h2>
-<p>{{section_body}}</p>
-""";
-
-    private const string NodCommandPagePackageTemplate = """
-<h1>{{command}}</h1>
-<p>{{summary}}</p>
-
-<div class="notice"><b>{{syntax_label}}</b> <code>{{syntax}}</code></div>
-
-<h2>{{example_title}}</h2>
-<pre>{{example_nod}}</pre>
-""";
-
-    private const string NodPopupPackageTemplate = """
-<div class="title">{{command}}</div>
-<div class="syntax">{{syntax}}</div>
-<div><b>{{meaning_label}}</b> {{meaning}}</div>
-<div><b>{{example_label}}</b> <code>{{example}}</code></div>
-""";
-
-    private const string NodSnippetPackageTemplate = """
-<div class="topic-grid">
-  {{items}}
-</div>
-""";
-
     private static readonly byte[] Magic = Encoding.ASCII.GetBytes(MagicText);
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -148,9 +82,6 @@ internal static class Program
                 "agent-compile-with-base" => AgentCompileLanguageWithBase(args),
                 "agent-compile-with-base-signed" => AgentCompileSignedLanguageWithBase(args),
                 "create-signing-key" => CreateSigningKey(args),
-                "export-formula-cards" => ExportFormulaCards(args),
-                "export-formula-template" => ExportFormulaTemplate(args),
-                "export-html-templates" => ExportHtmlTemplates(args),
                 "validate" => ValidatePackage(args),
                 "inspect" => InspectPackage(args),
                 _ => Usage(),
@@ -177,9 +108,6 @@ internal static class Program
         Console.WriteLine("  agent-compile-with-base <base-folder-or-package> <input-folder-or-objpdk> <output.lngpdk>");
         Console.WriteLine("  agent-compile-with-base-signed <base-folder-or-package> <input-folder-or-objpdk> <output.lngpdk> <private-key.pem> <key-id>");
         Console.WriteLine("  create-signing-key <private-key.pem> <public-key.lngpdk.pubkey.json> <key-id>");
-        Console.WriteLine("  export-formula-cards <output-folder> [language-file.lng]");
-        Console.WriteLine("  export-formula-template <output.lng> [language-file.lng]");
-        Console.WriteLine("  export-html-templates <output-folder>");
         Console.WriteLine("  validate <package.lngpdk>");
         Console.WriteLine("  inspect <package.lngpdk>");
         return 2;
@@ -340,82 +268,6 @@ internal static class Program
     {
         var error = new LanguagePackageAgentError(false, code, message);
         Console.WriteLine(JsonSerializer.Serialize(error, AgentJsonOptions));
-    }
-
-    private static int ExportFormulaCards(string[] args)
-    {
-        if (args.Length is not 2 and not 3)
-            return Usage();
-
-        var outputFolder = Path.GetFullPath(args[1]);
-        Directory.CreateDirectory(outputFolder);
-        var languageMap = args.Length == 3
-            ? ReadLanguageMap(Path.GetFullPath(args[2]))
-            : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-        var cards = FormulaCardCatalog.GetDefaultCards();
-        var localizedCards = cards
-            .Select(card => LocalizeFormulaCard(card, languageMap))
-            .ToArray();
-        File.WriteAllText(
-            Path.Combine(outputFolder, "index.html"),
-            BuildFormulaIndexHtml(localizedCards, languageMap, FormulaIndexPackageTemplate),
-            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-
-        foreach (var card in localizedCards.OrderBy(card => card.Title, StringComparer.CurrentCultureIgnoreCase))
-        {
-            MathMlParser.Parse(card.Source.MathMl);
-            var relativePath = BuildFormulaCardPackagePath(card.Source);
-            var outputPath = Path.Combine(outputFolder, relativePath.Replace('/', Path.DirectorySeparatorChar));
-            Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
-            File.WriteAllText(outputPath, BuildFormulaCardHtml(card, languageMap, FormulaCardPackageTemplate), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-        }
-
-        Console.WriteLine("exported formula cards: " + cards.Count);
-        Console.WriteLine("output: " + outputFolder);
-        return 0;
-    }
-
-    private static int ExportFormulaTemplate(string[] args)
-    {
-        if (args.Length is not 2 and not 3)
-            return Usage();
-
-        var outputPath = Path.GetFullPath(args[1]);
-        var languageMap = args.Length == 3
-            ? ReadLanguageMap(Path.GetFullPath(args[2]))
-            : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        var cards = FormulaCardCatalog.GetDefaultCards();
-        var template = BuildFormulaTemplate(cards, languageMap);
-        Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
-        File.WriteAllText(outputPath, template, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-
-        Console.WriteLine("exported formula template: " + cards.Count);
-        Console.WriteLine("output: " + outputPath);
-        return 0;
-    }
-
-    private static int ExportHtmlTemplates(string[] args)
-    {
-        if (args.Length != 2)
-            return Usage();
-
-        var outputFolder = Path.GetFullPath(args[1]);
-        Directory.CreateDirectory(outputFolder);
-        var formulaFolder = Path.Combine(outputFolder, "source", "templates", "formula");
-        Directory.CreateDirectory(formulaFolder);
-        File.WriteAllText(Path.Combine(formulaFolder, "index.html"), FormulaIndexPackageTemplate, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-        File.WriteAllText(Path.Combine(formulaFolder, "card.html"), FormulaCardPackageTemplate, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-        var nodFolder = Path.Combine(outputFolder, "source", "templates", "nod");
-        Directory.CreateDirectory(nodFolder);
-        File.WriteAllText(Path.Combine(nodFolder, "full-page.html"), NodFullPagePackageTemplate, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-        File.WriteAllText(Path.Combine(nodFolder, "command-page.html"), NodCommandPagePackageTemplate, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-        File.WriteAllText(Path.Combine(nodFolder, "popup.html"), NodPopupPackageTemplate, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-        File.WriteAllText(Path.Combine(nodFolder, "snippet.html"), NodSnippetPackageTemplate, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-
-        Console.WriteLine("exported html templates: 6");
-        Console.WriteLine("output: " + outputFolder);
-        return 0;
     }
 
     private static string GetErrorCode(Exception ex)
@@ -797,214 +649,8 @@ internal static class Program
             .Replace("\\t", "\t", StringComparison.Ordinal);
     }
 
-    private static string BuildFormulaTemplate(IReadOnlyList<FormulaCard> cards, IReadOnlyDictionary<string, string> languageMap)
-    {
-        var builder = new StringBuilder();
-        builder.AppendLine("# Syscalculator formula card language template");
-        builder.AppendLine("# Format: key=value");
-        builder.AppendLine("# Copy missing keys into a language/*.lng file and translate the values.");
-        builder.AppendLine();
-
-        AppendLanguageTemplateValue(builder, languageMap, "formula_card.index.title", "Formulekaart");
-        AppendLanguageTemplateValue(builder, languageMap, "formula_card.index.intro", "De formulekaart bundelt wiskundige basisregels, MathML, LaTeX en voorbeeld-NOD voor gebruik in Syscalculator.");
-        AppendLanguageTemplateValue(builder, languageMap, "formula_card.index.column.formula", "Formule");
-        AppendLanguageTemplateValue(builder, languageMap, "formula_card.index.column.category", "Categorie");
-        AppendLanguageTemplateValue(builder, languageMap, "formula_card.index.column.tags", "Tags");
-        AppendLanguageTemplateValue(builder, languageMap, "formula_card.index.column.description", "Uitleg");
-        AppendLanguageTemplateValue(builder, languageMap, "formula_card.section.formula", "Formule");
-        AppendLanguageTemplateValue(builder, languageMap, "formula_card.section.text", "Tekst");
-        AppendLanguageTemplateValue(builder, languageMap, "formula_card.section.latex", "LaTeX");
-        AppendLanguageTemplateValue(builder, languageMap, "formula_card.section.mathml", "MathML");
-        AppendLanguageTemplateValue(builder, languageMap, "formula_card.section.example_nod", "Voorbeeld-NOD");
-
-        foreach (var card in cards.OrderBy(card => card.Id, StringComparer.OrdinalIgnoreCase))
-        {
-            builder.AppendLine();
-            builder.AppendLine("# " + card.Id);
-            var key = "formula_card.card." + card.Id + ".";
-            AppendLanguageTemplateValue(builder, languageMap, key + "title", card.Title);
-            AppendLanguageTemplateValue(builder, languageMap, key + "formula_text", card.Formula);
-            AppendLanguageTemplateValue(builder, languageMap, key + "plain_text", card.PlainText);
-            AppendLanguageTemplateValue(builder, languageMap, key + "tags", string.Join("|", card.LevelTags));
-            AppendLanguageTemplateValue(builder, languageMap, key + "description", card.Description);
-            AppendLanguageTemplateValue(builder, languageMap, key + "example_nod", card.ExampleNod);
-        }
-
-        return builder.ToString();
-    }
-
-    private static void AppendLanguageTemplateValue(StringBuilder builder, IReadOnlyDictionary<string, string> languageMap, string key, string fallback)
-    {
-        builder
-            .Append(key)
-            .Append('=')
-            .AppendLine(EncodeLanguageValue(T(languageMap, key, fallback)));
-    }
-
-    private static string EncodeLanguageValue(string value)
-    {
-        return value
-            .Replace("\r\n", "\n", StringComparison.Ordinal)
-            .Replace("\r", "\n", StringComparison.Ordinal)
-            .Replace("\t", "\\t", StringComparison.Ordinal)
-            .Replace("\n", "\\n", StringComparison.Ordinal);
-    }
-
-    private static LocalizedFormulaCard LocalizeFormulaCard(FormulaCard card, IReadOnlyDictionary<string, string> languageMap)
-    {
-        var key = "formula_card.card." + card.Id + ".";
-        return new LocalizedFormulaCard(
-            card,
-            T(languageMap, key + "title", card.Title),
-            T(languageMap, key + "formula_text", card.Formula),
-            T(languageMap, key + "plain_text", card.PlainText),
-            SplitFormulaTags(T(languageMap, key + "tags", string.Join("|", card.LevelTags))),
-            T(languageMap, key + "description", card.Description),
-            T(languageMap, key + "example_nod", card.ExampleNod));
-    }
-
-    private static IReadOnlyList<string> SplitFormulaTags(string value)
-    {
-        return value
-            .Split(['|', ','], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-            .ToArray();
-    }
-
-    private static string T(IReadOnlyDictionary<string, string> languageMap, string key, string fallback)
-    {
-        return languageMap.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value)
-            ? value
-            : fallback;
-    }
-
-    private static string BuildFormulaIndexHtml(IReadOnlyList<LocalizedFormulaCard> cards, IReadOnlyDictionary<string, string> languageMap, string template)
-    {
-        var rows = new StringBuilder();
-        foreach (var card in cards.OrderBy(card => card.Title, StringComparer.CurrentCultureIgnoreCase))
-        {
-            rows.Append("    <tr><td><a href=\"")
-                .Append(Html(BuildFormulaCardPackagePath(card.Source)))
-                .Append("\">")
-                .Append(Html(card.Title))
-                .Append("</a></td><td>")
-                .Append(Html(FriendlyFormulaCategory(BuildFormulaCardCategory(card.Source))))
-                .Append("</td><td>")
-                .Append(Html(string.Join(", ", card.Tags)))
-                .Append("</td><td>")
-                .Append(Html(card.Description))
-                .Append("</td></tr>")
-                .AppendLine();
-        }
-
-        return ApplyFormulaTemplate(template, new Dictionary<string, string?>
-        {
-            ["title"] = Html(T(languageMap, "formula_card.index.title", "Formulekaart")),
-            ["intro"] = Html(T(languageMap, "formula_card.index.intro", "De formulekaart bundelt wiskundige basisregels, MathML, LaTeX en voorbeeld-NOD voor gebruik in Syscalculator.")),
-            ["column_formula"] = Html(T(languageMap, "formula_card.index.column.formula", "Formule")),
-            ["column_category"] = Html(T(languageMap, "formula_card.index.column.category", "Categorie")),
-            ["column_tags"] = Html(T(languageMap, "formula_card.index.column.tags", "Tags")),
-            ["column_description"] = Html(T(languageMap, "formula_card.index.column.description", "Uitleg")),
-            ["rows"] = rows.ToString()
-        });
-    }
-
-    private static string BuildFormulaCardHtml(LocalizedFormulaCard card, IReadOnlyDictionary<string, string> languageMap, string template)
-    {
-        return ApplyFormulaTemplate(template, new Dictionary<string, string?>
-        {
-            ["title"] = Html(card.Title),
-            ["tags"] = Html(string.Join(", ", card.Tags)),
-            ["description"] = RenderFormulaCardDescription(card.Description),
-            ["section_formula"] = Html(T(languageMap, "formula_card.section.formula", "Formule")),
-            ["formula_text"] = Html(card.FormulaText),
-            ["mathml_card"] = card.Source.MathMl,
-            ["section_text"] = Html(T(languageMap, "formula_card.section.text", "Tekst")),
-            ["plain_text"] = Html(card.PlainText),
-            ["section_latex"] = Html(T(languageMap, "formula_card.section.latex", "LaTeX")),
-            ["latex"] = Html(card.Source.Latex),
-            ["section_mathml"] = Html(T(languageMap, "formula_card.section.mathml", "MathML")),
-            ["mathml_pre"] = Html(card.Source.MathMl),
-            ["section_example_nod"] = Html(T(languageMap, "formula_card.section.example_nod", "Voorbeeld-NOD")),
-            ["example_nod"] = Html(card.ExampleNod)
-        });
-    }
-
-    private static string ApplyFormulaTemplate(string template, IReadOnlyDictionary<string, string?> values)
-    {
-        var result = template;
-        foreach (var (key, value) in values)
-            result = result.Replace("{{" + key + "}}", value ?? "", StringComparison.Ordinal);
-
-        return result;
-    }
-
-    private static string BuildFormulaCardPackagePath(FormulaCard card)
-    {
-        return BuildFormulaCardCategory(card) + "/" + card.Id + ".html";
-    }
-
-    private static string BuildFormulaCardCategory(FormulaCard card)
-    {
-        var tags = card.LevelTags;
-        if (tags.Any(tag => tag.Equals("Statistiek", StringComparison.OrdinalIgnoreCase)))
-            return "statistiek";
-        if (tags.Any(tag => tag.Equals("Kansrekening", StringComparison.OrdinalIgnoreCase)))
-            return "kansrekening";
-        if (tags.Any(tag => tag.Equals("Goniometrie", StringComparison.OrdinalIgnoreCase)))
-            return "goniometrie";
-        if (tags.Any(tag => tag.Contains("Meetkunde", StringComparison.OrdinalIgnoreCase) ||
-                            tag.Equals("2D", StringComparison.OrdinalIgnoreCase) ||
-                            tag.Equals("3D", StringComparison.OrdinalIgnoreCase)))
-            return "meetkunde";
-        if (tags.Any(tag => tag.Contains("Analyse", StringComparison.OrdinalIgnoreCase) ||
-                            tag.Contains("Different", StringComparison.OrdinalIgnoreCase) ||
-                            tag.Contains("Integra", StringComparison.OrdinalIgnoreCase)))
-            return "analyse";
-        if (tags.Any(tag => tag.Equals("Algebra", StringComparison.OrdinalIgnoreCase)))
-            return "algebra";
-
-        return "basis";
-    }
-
-    private static string FriendlyFormulaCategory(string category)
-    {
-        return category switch
-        {
-            "analyse" => "Analyse",
-            "algebra" => "Algebra",
-            "basis" => "Basis",
-            "goniometrie" => "Goniometrie",
-            "kansrekening" => "Kansrekening",
-            "meetkunde" => "Meetkunde",
-            "statistiek" => "Statistiek",
-            _ => category
-        };
-    }
-
-    private static string RenderFormulaCardDescription(string description)
-    {
-        var html = Html(description);
-        foreach (var command in new[] { "length", "distance", "dot", "angle", "angled", "cross", "det", "trace", "mget", "vec" })
-        {
-            html = Regex.Replace(
-                html,
-                @"\b" + Regex.Escape(command) + @"\b",
-                "<a class=\"cmd-link\" href=\"nodpage:cmd:" + command + "\"><code>" + command + "</code></a>",
-                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-        }
-
-        return html;
-    }
-
-    private static string Html(string value)
-    {
-        return WebUtility.HtmlEncode(value);
-    }
-
     private static byte[] BuildZipPayload(string inputFolder, LanguagePackageManifest manifest)
     {
-        var recipe = LoadCompilerRecipe(inputFolder);
-        var explicitEntries = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         using var memory = new MemoryStream();
         using (var archive = new ZipArchive(memory, ZipArchiveMode.Create, leaveOpen: true))
         {
@@ -1021,79 +667,10 @@ internal static class Program
                     throw new InvalidDataException("File is too large: " + relative);
 
                 WriteArchiveEntry(archive, relative, File.ReadAllBytes(file));
-                explicitEntries.Add(NormalizeEntryName(relative));
-            }
-
-            foreach (var entry in BuildGeneratedEntries(inputFolder, manifest, recipe))
-            {
-                if (explicitEntries.Contains(entry.Key))
-                    continue;
-
-                WriteArchiveEntry(archive, entry.Key, Encoding.UTF8.GetBytes(entry.Value));
             }
         }
 
         return memory.ToArray();
-    }
-
-    private static IReadOnlyDictionary<string, string> BuildGeneratedEntries(
-        string inputFolder,
-        LanguagePackageManifest manifest,
-        LanguagePackageCompilerRecipe recipe)
-    {
-        var entries = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        if (recipe.GenerateFormulaCards)
-        {
-            foreach (var entry in BuildGeneratedFormulaEntries(inputFolder, manifest))
-                entries[entry.Key] = entry.Value;
-        }
-
-        return entries;
-    }
-
-    private static LanguagePackageCompilerRecipe LoadCompilerRecipe(string inputFolder)
-    {
-        var path = Path.Combine(inputFolder, CompilerRecipeFileName);
-        if (!File.Exists(path))
-            return LanguagePackageCompilerRecipe.Default;
-
-        var recipe = JsonSerializer.Deserialize<LanguagePackageCompilerRecipe>(
-            File.ReadAllText(path, Encoding.UTF8),
-            JsonOptions) ?? throw new InvalidDataException(CompilerRecipeFileName + " is invalid.");
-        recipe.Validate();
-        return recipe;
-    }
-
-    private static IReadOnlyDictionary<string, string> BuildGeneratedFormulaEntries(string inputFolder, LanguagePackageManifest manifest)
-    {
-        var languagePath = Path.Combine(inputFolder, "language", manifest.LanguageCode + ".lng");
-        var languageMap = File.Exists(languagePath)
-            ? ReadLanguageMap(languagePath)
-            : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        var indexTemplate = ReadOptionalTemplate(inputFolder, "formula/index.html", "formula-index.html", FormulaIndexPackageTemplate);
-        var cardTemplate = ReadOptionalTemplate(inputFolder, "formula/card.html", "formula-card.html", FormulaCardPackageTemplate);
-        var cards = FormulaCardCatalog.GetDefaultCards()
-            .Select(card => LocalizeFormulaCard(card, languageMap))
-            .ToArray();
-        var entries = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["formula/index.html"] = BuildFormulaIndexHtml(cards, languageMap, indexTemplate)
-        };
-
-        foreach (var card in cards.OrderBy(card => card.Title, StringComparer.CurrentCultureIgnoreCase))
-            entries["formula/" + BuildFormulaCardPackagePath(card.Source)] = BuildFormulaCardHtml(card, languageMap, cardTemplate);
-
-        return entries;
-    }
-
-    private static string ReadOptionalTemplate(string inputFolder, string templatePath, string legacyFileName, string fallback)
-    {
-        var path = Path.Combine(inputFolder, "source", "templates", templatePath.Replace('/', Path.DirectorySeparatorChar));
-        if (File.Exists(path))
-            return File.ReadAllText(path, Encoding.UTF8);
-
-        var legacyPath = Path.Combine(inputFolder, "templates", legacyFileName);
-        return File.Exists(legacyPath) ? File.ReadAllText(legacyPath, Encoding.UTF8) : fallback;
     }
 
     private static void WriteArchiveEntry(ZipArchive archive, string relative, byte[] bytes)
@@ -1110,8 +687,7 @@ internal static class Program
     private static bool IsCompileSourceOnlyEntry(string entryName)
     {
         var normalized = NormalizeEntryName(entryName);
-        return normalized.Equals(CompilerRecipeFileName, StringComparison.OrdinalIgnoreCase) ||
-            normalized.StartsWith("source/templates/", StringComparison.OrdinalIgnoreCase) ||
+        return normalized.StartsWith("source/templates/", StringComparison.OrdinalIgnoreCase) ||
             normalized.StartsWith("templates/", StringComparison.OrdinalIgnoreCase);
     }
 
@@ -1693,15 +1269,6 @@ public sealed record PackageInspection(
     string PackageSha256,
     byte[] Payload);
 
-internal sealed record LocalizedFormulaCard(
-    FormulaCard Source,
-    string Title,
-    string FormulaText,
-    string PlainText,
-    IReadOnlyList<string> Tags,
-    string Description,
-    string ExampleNod);
-
 public sealed record LanguagePackageBuildResult(
     bool Success,
     string OutputPath,
@@ -1720,20 +1287,6 @@ public sealed record LanguagePackageBuildResult(
     string BasePackage,
     IReadOnlyList<string> AddedEntries,
     IReadOnlyList<string> AddedLanguageKeys);
-
-public sealed class LanguagePackageCompilerRecipe
-{
-    public static LanguagePackageCompilerRecipe Default { get; } = new();
-
-    public int Format { get; set; } = 1;
-    public bool GenerateFormulaCards { get; set; }
-
-    public void Validate()
-    {
-        if (Format != 1)
-            throw new InvalidDataException("Unsupported compiler recipe format.");
-    }
-}
 
 public sealed record LanguagePackageSigningOptions(
     string Algorithm,

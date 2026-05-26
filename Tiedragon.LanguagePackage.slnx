@@ -1,6 +1,5 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Tiedragon.LanguagePackage/Tiedragon.LanguagePackage.csproj" />
-    <Project Path="src/Tiedragon.NodSystem.Core/Tiedragon.NodSystem.Core.csproj" />
   </Folder>
 </Solution>

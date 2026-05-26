@@ -10,11 +10,11 @@ is the independent home for the language package software.
 
 ```text
 src/Tiedragon.LanguagePackage
-src/Tiedragon.NodSystem.Core
 ```
 
-`Tiedragon.NodSystem.Core` is included because the current package compiler can
-export formula-card and NOD help content while compiling language packages.
+The compiler is intentionally generic. Product-specific generators, such as
+Syscalculator formula cards, prepare normal source files before this compiler
+packages them.
 
 ## Build
 
@@ -30,14 +30,6 @@ dotnet run --project src/Tiedragon.LanguagePackage -- inspect package.lngpdk
 dotnet run --project src/Tiedragon.LanguagePackage -- compile source-folder output.lngpdk
 dotnet run --project src/Tiedragon.LanguagePackage -- create-signing-key private-keys/beta.pem keys/beta.lngpdk.pubkey.json tiedragon-language-beta-2026
 ```
-
-## Compiler Recipe
-
-Package sources can include `compiler-recipe.json` to tell the compiler which
-generated content to create. Without a recipe, the compiler only packages the
-explicit files in the source package.
-
-See [`docs/COMPILER_RECIPE.md`](docs/COMPILER_RECIPE.md).
 
 ## Key Files
 

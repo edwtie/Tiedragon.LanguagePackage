@@ -19,10 +19,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Tiedragon.NodSystem.Core\Tiedragon.NodSystem.Core.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
     <None Include="language-package-policy.ini">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
