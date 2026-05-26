@@ -9,6 +9,7 @@ namespace Tiedragon.LanguagePackage;
 public static class LanguagePackageSignatureVerifier
 {
     private const string TrustedKeysFileName = "language-package-trusted-keys.json";
+    private const string TrustedPublicKeyPattern = "*.lngpdk.pubkey.json";
     private static readonly HashSet<string> KnownAlgorithms = new(StringComparer.OrdinalIgnoreCase)
     {
         "rsa-pss-sha256",
@@ -154,9 +155,16 @@ public static class LanguagePackageSignatureVerifier
         var keys = new List<TrustedLanguagePackageKey>();
         foreach (var path in paths)
         {
-            var store = JsonSerializer.Deserialize<TrustedLanguagePackageKeyStore>(
-                File.ReadAllText(path, Encoding.UTF8),
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var text = File.ReadAllText(path, Encoding.UTF8);
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var singleKey = JsonSerializer.Deserialize<TrustedLanguagePackageKey>(text, options);
+            if (!string.IsNullOrWhiteSpace(singleKey?.KeyId))
+            {
+                keys.Add(singleKey);
+                continue;
+            }
+
+            var store = JsonSerializer.Deserialize<TrustedLanguagePackageKeyStore>(text, options);
             if (store?.Keys is { Count: > 0 })
                 keys.AddRange(store.Keys);
         }
@@ -173,10 +181,33 @@ public static class LanguagePackageSignatureVerifier
             Path.Combine(Environment.CurrentDirectory, "src", "Tiedragon.LanguagePackage", TrustedKeysFileName),
         };
 
+        var keyFiles = EnumerateTrustedPublicKeyFiles();
         return candidates
+            .Concat(keyFiles)
             .Where(File.Exists)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
+    }
+
+    private static IEnumerable<string> EnumerateTrustedPublicKeyFiles()
+    {
+        var directories = new[]
+        {
+            AppContext.BaseDirectory,
+            Path.Combine(AppContext.BaseDirectory, "keys"),
+            Environment.CurrentDirectory,
+            Path.Combine(Environment.CurrentDirectory, "keys"),
+            Path.Combine(Environment.CurrentDirectory, "src", "Tiedragon.LanguagePackage", "keys"),
+        };
+
+        foreach (var directory in directories.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (!Directory.Exists(directory))
+                continue;
+
+            foreach (var file in Directory.GetFiles(directory, TrustedPublicKeyPattern))
+                yield return file;
+        }
     }
 
     private static string Normalize(string value) =>

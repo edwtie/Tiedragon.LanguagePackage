@@ -1,0 +1,8 @@
+{
+  "KeyId": "tiedragon-language-dev-2026",
+  "Algorithm": "rsa-pss-sha256",
+  "SoftwareId": "tiedragon.syscalculator",
+  "PackageType": "language",
+  "PayloadFormat": "zip",
+  "PublicKeyPem": "-----BEGIN PUBLIC KEY-----\nMIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEAwWxL3ko/bfMnSNyHMh32\nX3N4E5piHsXN7rBIZkivyZUPWE8cyHct3L0cAk7oIbJAmcpo4DVZBNdeMTonco37\noh1MJjkYkhNlamIR/oBbPQ/1gYZQGHUsB45IJg8XIEWCj6cksTOCc9rZTjUcXLGu\nwPhuDF+lUvYk1utjNajEq4JEVPuglYwNrmPWT0hzHnPBt4Djy44QdseYms1PIa26\np+ks0xEi4o1yftJN6o9mMmtAVKtMZuTZDq8eNJPBP2HW803OKJc8C7Fcy/YAteLy\nhhDTwpw3fW057eAybZ/ke5Nu4WyxiQQN8VKFXDEXCN3Vt/9Kdz8fVypPLXOLKPss\nxcOMc8vW9VFnA6cVzy+FDbkp+AqjpnlIBDpps7et7Gn0xi5kf97AQpvWntHcvCuP\nk0SY9vunwYDqKslVMr5YIIJ22Fxa9gFaJdGP3P0jkB1H8W8LeZ2+WH98A74CRlfu\nXsK18qjsv6J/hQxfLAxSDgYmNEXPuTOdEvEEBqwlFeKdAgMBAAE=\n-----END PUBLIC KEY-----"
+}

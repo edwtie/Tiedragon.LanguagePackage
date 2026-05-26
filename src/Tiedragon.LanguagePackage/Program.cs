@@ -175,7 +175,7 @@ internal static class Program
         Console.WriteLine("  agent-compile-signed <input-folder-or-objpdk> <output.lngpdk> <private-key.pem> <key-id>");
         Console.WriteLine("  agent-compile-with-base <base-folder-or-package> <input-folder-or-objpdk> <output.lngpdk>");
         Console.WriteLine("  agent-compile-with-base-signed <base-folder-or-package> <input-folder-or-objpdk> <output.lngpdk> <private-key.pem> <key-id>");
-        Console.WriteLine("  create-signing-key <private-key.pem> <trusted-key.json> <key-id>");
+        Console.WriteLine("  create-signing-key <private-key.pem> <public-key.lngpdk.pubkey.json> <key-id>");
         Console.WriteLine("  export-formula-cards <output-folder> [language-file.lng]");
         Console.WriteLine("  export-formula-template <output.lng> [language-file.lng]");
         Console.WriteLine("  export-html-templates <output-folder>");
@@ -319,23 +319,17 @@ internal static class Program
 
         using var rsa = RSA.Create(3072);
         File.WriteAllText(privateKeyPath, rsa.ExportPkcs8PrivateKeyPem(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-        var trusted = new TrustedLanguagePackageKeyStore
-        {
-            Keys =
-            [
-                new TrustedLanguagePackageKey(
-                    keyId,
-                    "rsa-pss-sha256",
-                    "tiedragon.syscalculator",
-                    PackageType,
-                    "zip",
-                    rsa.ExportSubjectPublicKeyInfoPem())
-            ]
-        };
+        var trusted = new TrustedLanguagePackageKey(
+            keyId,
+            "rsa-pss-sha256",
+            "tiedragon.syscalculator",
+            PackageType,
+            "zip",
+            rsa.ExportSubjectPublicKeyInfoPem());
         File.WriteAllText(trustedKeyPath, JsonSerializer.Serialize(trusted, JsonOptions), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
 
         Console.WriteLine("privateKey: " + privateKeyPath);
-        Console.WriteLine("trustedKey: " + trustedKeyPath);
+        Console.WriteLine("publicKey: " + trustedKeyPath);
         Console.WriteLine("keyId: " + keyId);
         Console.WriteLine("algorithm: rsa-pss-sha256");
         return 0;

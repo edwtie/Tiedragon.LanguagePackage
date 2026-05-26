@@ -29,6 +29,9 @@
     <None Include="language-package-trusted-keys.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="..\..\keys\*.lngpdk.pubkey.json" LinkBase="keys">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

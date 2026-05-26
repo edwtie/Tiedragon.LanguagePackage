@@ -28,7 +28,20 @@ dotnet build Tiedragon.LanguagePackage.slnx
 dotnet run --project src/Tiedragon.LanguagePackage -- validate package.lngpdk
 dotnet run --project src/Tiedragon.LanguagePackage -- inspect package.lngpdk
 dotnet run --project src/Tiedragon.LanguagePackage -- compile source-folder output.lngpdk
+dotnet run --project src/Tiedragon.LanguagePackage -- create-signing-key private-keys/beta.pem keys/beta.lngpdk.pubkey.json tiedragon-language-beta-2026
 ```
+
+## Key Files
+
+Public trusted keys are stored as `.lngpdk.pubkey.json` files. These files may
+be committed and distributed with software that needs to verify signed language
+packages.
+
+Private signing keys must never be committed. The `.gitignore` blocks common
+private key file names and the `private-keys/` folder.
+
+The verifier also keeps compatibility with the older
+`language-package-trusted-keys.json` key store.
 
 ## Direction
 
